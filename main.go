@@ -60,6 +60,8 @@ func waitForOAuthAccessResponse(httpClient http.Client) {
 	s := getRepositories(httpClient)
 	fmt.Fprintf(os.Stdout, "Repository count: %v\n", len(s.Repos))
 	fmt.Fprintf(os.Stdout, "SIZE: %v\n", s.Size)
+	fmt.Fprintf(os.Stdout, "PAGELEN: %v\n", s.Pagelen)
+	fmt.Fprintf(os.Stdout, "PAGE: %v\n", s.Page)
 }
 
 type OAuthAccessResponse struct {
@@ -177,14 +179,14 @@ func getToken(httpClient http.Client, w http.ResponseWriter, r *http.Request, cl
 }
 
 func getRepositories(httpClient http.Client) BitBucketResponse {
-	//bearer := "Bearer " + t.AccessToken // github
-	//gitHubApiVersion := "2022-11-28" // github
-	bitbucketUserName := os.Getenv("BITBUCKET_USER")
+	bearer := "Bearer " + t.AccessToken
+	//gitHubApiVersion := "2022-11-28" // github only
+	bitbucketUserName := os.Getenv("BITBUCKET_USER") // bitbucket only
 
 	// Next, lets for the HTTP request to call the github oauth enpoint
 	// to get our access token
 	//reqURL := fmt.Sprintf("https://api.github.com/user/repos?per_page=100")
-	reqURL := fmt.Sprintf("https://api.bitbucket.org/2.0/repositories/%v", bitbucketUserName)
+	reqURL := fmt.Sprintf("https://api.bitbucket.org/2.0/repositories/%v?pagelen=100", bitbucketUserName)
 	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
 
 	if err != nil {
@@ -193,7 +195,7 @@ func getRepositories(httpClient http.Client) BitBucketResponse {
 	}
 	// We set this header since we want the response
 	req.Header.Set("accept", "application/json")
-	//req.Header.Set("Authorization", bearer) // github
+	req.Header.Set("Authorization", bearer) // github
 	//req.Header.Set("X-GitHub-Api-Version", gitHubApiVersion) // github
 
 	// Send out the HTTP request

@@ -50,7 +50,7 @@ func main() {
 
 func waitForOAuthAccessResponse(httpClient http.Client) {
 	// todo? Replace with channel.
-	// In this case a for is fine because only one  goroutine can change `t`
+	// In this case a `for`` is fine because only one goroutine can change `t`
 	for {
 		if len(t.AccessToken) > 0 {
 			break
@@ -62,6 +62,10 @@ func waitForOAuthAccessResponse(httpClient http.Client) {
 	fmt.Fprintf(os.Stdout, "SIZE: %v\n", s.Size)
 	fmt.Fprintf(os.Stdout, "PAGELEN: %v\n", s.Pagelen)
 	fmt.Fprintf(os.Stdout, "PAGE: %v\n", s.Page)
+
+	for _, repo := range s.Repos {
+		fmt.Fprintf(os.Stdout, "Name: %s\n", repo.Name)
+	}
 }
 
 type OAuthAccessResponse struct {
@@ -132,29 +136,32 @@ func getToken(httpClient http.Client, w http.ResponseWriter, r *http.Request, cl
 	// Next, lets for the HTTP request to call the github oauth enpoint
 	// to get our access token
 
-	// github
+	// github only
 	//reqURL := fmt.Sprintf("https://github.com/login/oauth/access_token?client_id=%s&client_secret=%s&code=%s", clientID, clientSecret, code)
+	//body := nil
 
-	// bitbucket
+	// bitbucket only
 	data := url.Values{}
 	data.Set("grant_type", "client_credentials")
 	data.Set("code", code)
 	reqURL := "https://bitbucket.org/site/oauth2/access_token"
+	body := bytes.NewBufferString(data.Encode())
 
-	req, err := http.NewRequest(http.MethodPost, reqURL, bytes.NewBufferString(data.Encode()))
+	req, err := http.NewRequest(http.MethodPost, reqURL, body) //
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "could not create HTTP request: %v\n", err)
 		fmt.Fprintf(os.Stdout, "could not create HTTP request: %v\n", err)
 		os.Exit(1)
 	}
-	// We set this header since we want the response
 
-	// bitbucket
+	// bitbucket only
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	// as JSON
 	req.Header.Set("accept", "application/json")
+
+	// Bitbucket only
 	req.SetBasicAuth(clientID, clientSecret)
 
 	// Send out the HTTP request
@@ -212,10 +219,6 @@ func getRepositories(httpClient http.Client) BitBucketResponse {
 	if err := json.NewDecoder(res.Body).Decode(&s); err != nil {
 		fmt.Fprintf(os.Stdout, "could not parse JSON response: %v\n", err)
 		os.Exit(1)
-	}
-
-	for _, repo := range s.Repos {
-		fmt.Fprintf(os.Stdout, "Name: %s\n", repo.Name)
 	}
 
 	return s

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -32,7 +34,7 @@ func main() {
 	// Create a new redirect route route
 	http.HandleFunc("/oauth/redirect", func(w http.ResponseWriter, r *http.Request) {
 		getToken(httpClient, w, r, clientID, clientSecret)
-		fmt.Fprintf(os.Stdout, "Access token: %s", t.AccessToken)
+		fmt.Fprintf(os.Stdout, "Access token: %s\n", t.AccessToken)
 	})
 
 	// Listen for connections
@@ -41,12 +43,12 @@ func main() {
 	// Open a browser if possible or echo the url to command line
 	go OpenBrowser(generateOauthUrl(clientID))
 
-	go waitForOAuthAccessResponse()
+	go waitForOAuthAccessResponse(httpClient)
 
 	handlePosix()
 }
 
-func waitForOAuthAccessResponse() {
+func waitForOAuthAccessResponse(httpClient http.Client) {
 	// todo? Replace with channel.
 	// In this case a for is fine because only one  goroutine can change `t`
 	for {
@@ -55,17 +57,35 @@ func waitForOAuthAccessResponse() {
 		}
 	}
 
-	//g := getBitbucketRepositories(httpClient)
-	//fmt.Fprintf(os.Stdout, "%v", g)
+	s := getRepositories(httpClient)
+	fmt.Fprintf(os.Stdout, "Repository count: %v\n", len(s.Repos))
+	fmt.Fprintf(os.Stdout, "SIZE: %v\n", s.Size)
 }
 
 type OAuthAccessResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
-type GitHubReposResponse struct {
-	Name   string `json:"name"`
-	SshUrl string `json:"ssh_url"`
+type GitHubRepo struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Visibility  string `json:"visibility"`
+	SshUrl      string `json:"ssh_url"`
+}
+
+type BitBucketResponse struct {
+	Repos   []BitBucketRepo `json:"values"`
+	Size    int             `json:"size"`
+	Page    int             `json:"page"`
+	Pagelen int             `json:"pagelen"`
+	Next    string          `json:"next"`
+}
+
+type BitBucketRepo struct {
+	Slug        string `json:"slug"` // git@bitbucket.org:[slug]
+	Name        string `json:"name"`
+	FullName    string `json:"full_name"`
+	Description string `json:"description"`
 }
 
 var browserCommands = map[string]string{
@@ -75,9 +95,11 @@ var browserCommands = map[string]string{
 }
 
 func generateOauthUrl(clientID string) string {
-	url1 := "https://github.com/login/oauth/authorize?client_id=" + clientID
+	//url1 := "https://github.com/login/oauth/authorize?client_id=" + clientID
+	url1 := "https://bitbucket.org/site/oauth2/authorize?client_id=" + clientID
 	url2 := "&redirect_uri=http://localhost:8080/oauth/redirect"
-	url3 := "&scope=repo"
+	//url3 := "&scope=repo"
+	url3 := "&response_type=code&scope=repository"
 
 	url := fmt.Sprintf("%s%s%s", url1, url2, url3)
 
@@ -87,8 +109,8 @@ func generateOauthUrl(clientID string) string {
 func OpenBrowser(uri string) {
 	run, ok := browserCommands[runtime.GOOS]
 	if !ok {
-		fmt.Fprintf(os.Stdout, "don't know how to open things on %s platform", runtime.GOOS)
-		fmt.Fprintf(os.Stdout, "Click this link to authorize repository access: %s", uri)
+		fmt.Fprintf(os.Stdout, "don't know how to open things on %s platform\n", runtime.GOOS)
+		fmt.Fprintf(os.Stdout, "Click this link to authorize repository access: %s\n", uri)
 	}
 	cmd := exec.Command(run, uri)
 	cmd.Start()
@@ -99,32 +121,46 @@ func getToken(httpClient http.Client, w http.ResponseWriter, r *http.Request, cl
 	err := r.ParseForm()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "could not parse query: %v", err)
-		fmt.Fprintf(os.Stdout, "could not parse query: %v", err)
+		fmt.Fprintf(w, "could not parse query: %v\n", err)
+		fmt.Fprintf(os.Stdout, "could not parse query: %v\n", err)
 		os.Exit(1)
 	}
 	code := r.FormValue("code")
 
 	// Next, lets for the HTTP request to call the github oauth enpoint
 	// to get our access token
-	reqURL := fmt.Sprintf("https://github.com/login/oauth/access_token?client_id=%s&client_secret=%s&code=%s", clientID, clientSecret, code)
-	req, err := http.NewRequest(http.MethodPost, reqURL, nil)
+
+	// github
+	//reqURL := fmt.Sprintf("https://github.com/login/oauth/access_token?client_id=%s&client_secret=%s&code=%s", clientID, clientSecret, code)
+
+	// bitbucket
+	data := url.Values{}
+	data.Set("grant_type", "client_credentials")
+	data.Set("code", code)
+	reqURL := "https://bitbucket.org/site/oauth2/access_token"
+
+	req, err := http.NewRequest(http.MethodPost, reqURL, bytes.NewBufferString(data.Encode()))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "could not create HTTP request: %v", err)
-		fmt.Fprintf(os.Stdout, "could not create HTTP request: %v", err)
+		fmt.Fprintf(w, "could not create HTTP request: %v\n", err)
+		fmt.Fprintf(os.Stdout, "could not create HTTP request: %v\n", err)
 		os.Exit(1)
 	}
 	// We set this header since we want the response
+
+	// bitbucket
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
 	// as JSON
 	req.Header.Set("accept", "application/json")
+	req.SetBasicAuth(clientID, clientSecret)
 
 	// Send out the HTTP request
 	res, err := httpClient.Do(req)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "could not send HTTP request: %v", err)
-		fmt.Fprintf(os.Stdout, "could not send HTTP request: %v", err)
+		fmt.Fprintf(w, "could not send HTTP request: %v\n", err)
+		fmt.Fprintf(os.Stdout, "could not send HTTP request: %v\n", err)
 		os.Exit(1)
 	}
 	defer res.Body.Close()
@@ -132,51 +168,55 @@ func getToken(httpClient http.Client, w http.ResponseWriter, r *http.Request, cl
 	// Parse the request body into the `OAuthAccessResponse` struct
 	if err := json.NewDecoder(res.Body).Decode(&t); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintf(w, "could not parse JSON response: %v", err)
-		fmt.Fprintf(os.Stdout, "could not parse JSON response: %v", err)
+		fmt.Fprintf(w, "could not parse JSON response: %v\n", err)
+		fmt.Fprintf(os.Stdout, "could not parse JSON response: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Fprintf(w, "Success. You can close this tab.")
+	fmt.Fprintf(w, "Success. You can close this tab.\n")
 }
 
-func getBitbucketRepositories(httpClient http.Client) GitHubReposResponse {
-	var bearer = "Bearer " + t.AccessToken
-	var gitHubApiVersion = "2022-11-28"
+func getRepositories(httpClient http.Client) BitBucketResponse {
+	//bearer := "Bearer " + t.AccessToken // github
+	//gitHubApiVersion := "2022-11-28" // github
+	bitbucketUserName := os.Getenv("BITBUCKET_USER")
 
 	// Next, lets for the HTTP request to call the github oauth enpoint
 	// to get our access token
-	reqURL := fmt.Sprintf("https://api.github.com/user/repos?per_page=100")
-	req, err := http.NewRequest(http.MethodPost, reqURL, nil)
+	//reqURL := fmt.Sprintf("https://api.github.com/user/repos?per_page=100")
+	reqURL := fmt.Sprintf("https://api.bitbucket.org/2.0/repositories/%v", bitbucketUserName)
+	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
 
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "could not create HTTP request: %v", err)
+		fmt.Fprintf(os.Stdout, "could not create HTTP request: %v\n", err)
 		os.Exit(1)
 	}
 	// We set this header since we want the response
-	// as JSON
 	req.Header.Set("accept", "application/json")
-	req.Header.Set("Authorization", bearer)
-	req.Header.Set("X-GitHub-Api-Version", gitHubApiVersion)
+	//req.Header.Set("Authorization", bearer) // github
+	//req.Header.Set("X-GitHub-Api-Version", gitHubApiVersion) // github
 
 	// Send out the HTTP request
 	res, err := httpClient.Do(req)
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "could not send HTTP request: %v", err)
+		fmt.Fprintf(os.Stdout, "could not send HTTP request: %v\n", err)
 		os.Exit(1)
 	}
 	defer res.Body.Close()
 
-	//fmt.Fprintf("%v", res.Body)
-
 	// Parse the request body into the `OAuthAccessResponse` struct
-	var g GitHubReposResponse
-	if err := json.NewDecoder(res.Body).Decode(&g); err != nil {
-		fmt.Fprintf(os.Stdout, "could not parse JSON response: %v", err)
+	//var s []GitHubRepo
+	var s BitBucketResponse
+	if err := json.NewDecoder(res.Body).Decode(&s); err != nil {
+		fmt.Fprintf(os.Stdout, "could not parse JSON response: %v\n", err)
 		os.Exit(1)
 	}
 
-	return g
+	for _, repo := range s.Repos {
+		fmt.Fprintf(os.Stdout, "Name: %s\n", repo.Name)
+	}
+
+	return s
 }
 
 // https://gobyexample.com/signals

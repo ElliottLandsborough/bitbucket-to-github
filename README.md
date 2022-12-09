@@ -7,4 +7,7 @@ Go here: `https://bitbucket.org/[username]/workspace/settings/api`
 Add a new consumer:
 
 - Name: `anything`
+- Callback URL: `http://localhost:8080/oauth/redirect`
+- URL: `http://localhost:8080/`
+- This is a private consumer `[x]`
 - Permissions: `repository -> read`

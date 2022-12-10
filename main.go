@@ -19,6 +19,10 @@ import (
 var t OAuthAccessResponse
 
 func main() {
+
+}
+
+func main1234() {
 	// Load .env file (see example)
 	err := godotenv.Load()
 	if err != nil {

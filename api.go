@@ -61,14 +61,14 @@ func (b *BitBucketResponse) toClonables() map[string]Clonable {
 }
 
 type BitBucketRepo struct {
-	Slug        string `json:"slug"` // git@bitbucket.org:[slug]
+	Slug        string `json:"slug"` // git@bitbucket.org:[username]/[slug]
 	Name        string `json:"name"`
 	FullName    string `json:"full_name"`
 	Description string `json:"description"`
 }
 
 func (r *BitBucketRepo) cloneUrl() string {
-	return "git@bitbucket.org:" + r.Slug
+	return "git@bitbucket.org:" + os.Getenv("BITBUCKET_USER") + "/" + r.Slug
 }
 
 func getRepositories(provider string) map[string]Clonable {
@@ -146,6 +146,7 @@ func gitHubRepoHasContributors(repo Clonable) bool {
 		fmt.Fprintf(os.Stdout, "could not create HTTP request: %v\n", err)
 		os.Exit(1)
 	}
+
 	req.Header.Set("accept", "application/json")
 	req.Header.Set("Authorization", "Bearer "+getBearerToken("github"))
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
@@ -181,10 +182,6 @@ func createPrivateGithubRepos(s map[string]Clonable) {
 }
 
 func createPrivateGithubRepo(c Clonable) {
-
-	/*
-	  '{"name":"Hello-World","description":"This is your first repo!","homepage":"https://github.com","private":false,"is_template":true}'
-	*/
 	waitForOAuthAccessResponse("github")
 
 	reqURL := "https://api.github.com/user/repos"

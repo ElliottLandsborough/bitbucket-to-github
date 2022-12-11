@@ -46,7 +46,7 @@ func main() {
 
 	bitBucketClonables := getRepositories("bitbucket")
 
-	cloneRepositories(bitBucketClonables, "/tmp/foo/", "bitbucket")
+	cloneRepositories(bitBucketClonables, basePath, "bitbucket")
 
 	// Create new gh oauth
 	var gh GitHubOauth

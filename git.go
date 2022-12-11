@@ -17,30 +17,17 @@ func cloneRepositories(s map[string]Clonable, basePath string, provider string) 
 
 	for _, repo := range s {
 		fmt.Fprintf(os.Stdout, "Cloning: %s\n", repo.Name)
-		fmt.Fprintf(os.Stdout, "git clone https://github.com/go-git/go-git: %s\n", repo.SshUrl)
+		fmt.Fprintf(os.Stdout, "git clone: %s\n", repo.SshUrl)
 
-		cloneDir := basePath + repo.Name
+		cloneDir := basePath + "/" + repo.Name
 
 		if _, err := git.PlainClone(cloneDir, false, &git.CloneOptions{
-			URL:      "https://github.com/go-git/go-git",
+			URL:      repo.SshUrl,
 			Progress: os.Stdout,
 		}); err != nil {
 			fmt.Fprintf(os.Stdout, "could not parse JSON response: %v\n", err)
 			os.Exit(1)
 		}
-
-		return
-
-		/*
-		  echo "* $repo cloned, now creating on github..."
-		  echo
-		  #curl -u $GH_USERNAME:$GH_PASSWORD https://api.github.com/orgs/$GH_ORG/repos -d "{\"name\": \"$repo\", \"private\": true}"
-		  echo
-		  echo "* mirroring $repo to github..."
-		  echo
-		  #git push --mirror git@github.com:$GH_ORG/$repo.git && \
-		  #  bb delete -u $BB_USERNAME -p $BB_PASSWORD --owner $BB_ORG $repo
-		*/
 	}
 }
 
@@ -68,12 +55,34 @@ func GetPushableAndDuplicateRepos(bitBucketClonables map[string]Clonable, github
 }
 
 func pushLocalReposToGithub(s map[string]Clonable, basePath string) {
-	/*
-		r, err := git.PlainOpen(path)
-		CheckIfError(err)
+	for _, r := range s {
+		pushLocalRepoToGithub(r, basePath)
+		break // todo: remove
+	}
+}
 
-		Info("git push")
-		// push using default options
-		err = r.Push(&git.PushOptions{})
-	*/
+func pushLocalRepoToGithub(c Clonable, basePath string) {
+	path := basePath + "/" + c.Name
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stdout, "Path does not exist `%v`.\n", path)
+		os.Exit(1)
+	}
+
+	r, err := git.PlainOpen(path)
+
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "Could not open repository at `%v`. %v\n", path, err)
+		os.Exit(1)
+	}
+
+	panic("2")
+
+	// push using default options
+	err = r.Push(&git.PushOptions{})
+
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "Could not open repository at `%v`. %v\n", path, err)
+		os.Exit(1)
+	}
 }

@@ -31,3 +31,7 @@ Create new oauth app:
 ```bash
 go run *.go
 ```
+
+```bash
+go run *.go && rm -r /tmp/bitbucket-to-github
+```

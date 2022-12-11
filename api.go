@@ -100,18 +100,15 @@ func getRepositories(httpClient http.Client, provider string) map[string]Clonabl
 	var c map[string]Clonable
 
 	if provider == "github" {
-		var s []GitHubRepo
-		if err := json.NewDecoder(res.Body).Decode(&s); err != nil {
+		var s GitHubResponse
+		if err := json.NewDecoder(res.Body).Decode(&s.Repos); err != nil {
 			fmt.Fprintf(os.Stdout, "could not parse JSON response: %v\n", err)
 			os.Exit(1)
 		}
 
-		var g GitHubResponse
-		g.Repos = s
+		fmt.Fprintf(os.Stdout, "Github repository count: %v\n", len(s.Repos))
 
-		fmt.Fprintf(os.Stdout, "Github repository count: %v\n", len(g.Repos))
-
-		c = g.toClonables()
+		c = s.toClonables()
 	}
 
 	if provider == "bitbucket" {

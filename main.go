@@ -62,11 +62,11 @@ func main() {
 	}
 
 	// Only clone the ones we want to push
-	//cloneRepositories(pushables, basePath, "bitbucket")
-
-	createPrivateGithubRepos(pushables)
+	cloneRepositories(pushables, basePath, "bitbucket")
 
 	pushLocalReposToGithub(pushables, basePath)
+
+	fmt.Fprintf(os.Stdout, "Finished\n")
 
 	handlePosix()
 }

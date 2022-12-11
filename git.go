@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/go-git/go-git/v5"
 )
@@ -61,14 +62,18 @@ func pushLocalReposToGithub(s map[string]Clonable, basePath string) {
 }
 
 func pushLocalRepoToGithub(c Clonable, basePath string) {
+	createPrivateGithubRepo(c)
+
 	path := basePath + "/" + c.Name
 
+	// Does the path exist
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		fmt.Fprintf(os.Stdout, "Path does not exist `%v`.\n", path)
 		os.Exit(1)
 	}
 
-	r, err := git.PlainOpen(path)
+	// Try to open with go git just to prove it is a repo
+	_, err := git.PlainOpen(path)
 
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "Could not open repository at `%v`. %v\n", path, err)
@@ -77,13 +82,44 @@ func pushLocalRepoToGithub(c Clonable, basePath string) {
 
 	remoteURL := "git@github.com:" + os.Getenv("GITHUB_USER") + "/" + c.Name
 
-	// push using default options
-	err = r.Push(&git.PushOptions{
-		RemoteURL: remoteURL,
-	})
+	/*
+		// https://stackoverflow.com/a/16044860/5419663
+		refSpecs := make([]config.RefSpec, 0, 1)
+		refSpecs = append(refSpecs, config.RefSpec("+refs/remotes/source/*:refs/heads/*"))
+
+		// push using default options
+		err = r.Push(&git.PushOptions{
+			RemoteURL: remoteURL,
+			RefSpecs:  refSpecs,
+		})
+
+		if err != nil {
+			fmt.Fprintf(os.Stdout, "Could not push repository at `%v` to `%v`. %v\n", path, remoteURL, err)
+			os.Exit(1)
+		}
+	*/
+
+	fmt.Fprintf(os.Stdout, "Pushing %v...\n", remoteURL)
+
+	// rely on exec - can't get refspec to work how I want it to right now
+
+	// safe version
+	cmd := exec.Command("git", "push", remoteURL, "--all")
+
+	// run this as well as -all to bring tags across too
+	//cmd := exec.Command("git", "push", remoteURL, "--tags")
+
+	// nuclear option. don't use this unless you are sure you know what will happen
+	//cmd := exec.Command("git", "push", remoteURL, "--mirror")
+	cmd.Dir = path
+	out, err := cmd.Output()
 
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "Could not push repository at `%v` to `%v`. %v\n", path, remoteURL, err)
+		fmt.Fprintf(os.Stdout, "Could not push repository branches at `%v` to `%v`. %v\n", path, remoteURL, err)
 		os.Exit(1)
 	}
+
+	fmt.Fprintf(os.Stdout, "%v\n", out)
+
+	fmt.Fprintf(os.Stdout, "Done.\n")
 }

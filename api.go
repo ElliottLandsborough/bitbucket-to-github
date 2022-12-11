@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -212,11 +211,11 @@ func createPrivateGithubRepo(c Clonable) {
 	defer res.Body.Close()
 
 	if res.StatusCode != 201 {
-		fmt.Fprintf(os.Stdout, "ERROR\n")
-		fmt.Fprintf(os.Stdout, "response Status: %v\n", res.Status)
-		fmt.Fprintf(os.Stdout, "response Headers: %v\n", res.Header)
-		body, _ := ioutil.ReadAll(res.Body)
-		fmt.Fprintf(os.Stdout, "response Body: %v\n", string(body))
+		//fmt.Fprintf(os.Stdout, "ERROR\n")
+		fmt.Fprintf(os.Stdout, "Response Status: %v. Repo probably alreacy exists.\n", res.StatusCode)
+		//fmt.Fprintf(os.Stdout, "response Headers: %v\n", res.Header)
+		//body, _ := ioutil.ReadAll(res.Body)
+		//fmt.Fprintf(os.Stdout, "response Body: %v\n", string(body))
 	}
 
 	fmt.Fprintf(os.Stdout, "Private github repo created: %v\n", c.Name)

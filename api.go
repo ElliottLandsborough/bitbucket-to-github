@@ -83,7 +83,7 @@ func getRepositories(httpClient http.Client, provider string) map[string]Clonabl
 		os.Exit(1)
 	}
 	req.Header.Set("accept", "application/json")
-	req.Header.Set("Authorization", "Bearer:"+getBearerToken(provider))
+	req.Header.Set("Authorization", "Bearer "+getBearerToken(provider))
 
 	if provider == "github" {
 		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
@@ -100,15 +100,18 @@ func getRepositories(httpClient http.Client, provider string) map[string]Clonabl
 	var c map[string]Clonable
 
 	if provider == "github" {
-		var s GitHubResponse
+		var s []GitHubRepo
 		if err := json.NewDecoder(res.Body).Decode(&s); err != nil {
 			fmt.Fprintf(os.Stdout, "could not parse JSON response: %v\n", err)
 			os.Exit(1)
 		}
 
-		fmt.Fprintf(os.Stdout, "Github repository count: %v\n", len(s.Repos))
+		var g GitHubResponse
+		g.Repos = s
 
-		c = s.toClonables()
+		fmt.Fprintf(os.Stdout, "Github repository count: %v\n", len(g.Repos))
+
+		c = g.toClonables()
 	}
 
 	if provider == "bitbucket" {

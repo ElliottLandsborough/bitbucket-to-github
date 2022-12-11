@@ -46,8 +46,6 @@ func main() {
 
 	bitBucketClonables := getRepositories("bitbucket")
 
-	cloneRepositories(bitBucketClonables, basePath, "bitbucket")
-
 	// Create new gh oauth
 	var gh GitHubOauth
 
@@ -62,6 +60,9 @@ func main() {
 	for key := range duplicates {
 		fmt.Fprintf(os.Stdout, "Duplicate will not be pushed: %v\n", key)
 	}
+
+	// Only clone the ones we want to push
+	cloneRepositories(pushables, basePath, "bitbucket")
 
 	createPrivateGithubRepos(pushables)
 

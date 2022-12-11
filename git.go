@@ -19,8 +19,6 @@ func cloneRepositories(s []Clonable, basePath string) {
 
 		cloneDir := basePath + repo.Name
 
-		return
-
 		if _, err := git.PlainClone(cloneDir, false, &git.CloneOptions{
 			URL:      "https://github.com/go-git/go-git",
 			Progress: os.Stdout,
@@ -28,6 +26,8 @@ func cloneRepositories(s []Clonable, basePath string) {
 			fmt.Fprintf(os.Stdout, "could not parse JSON response: %v\n", err)
 			os.Exit(1)
 		}
+
+		return
 
 		/*
 		  echo "* $repo cloned, now creating on github..."

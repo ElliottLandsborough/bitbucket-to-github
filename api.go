@@ -68,7 +68,7 @@ func (r *BitBucketRepo) cloneUrl() string {
 }
 
 func getRepositories(httpClient http.Client, provider string) []Clonable {
-	bearer := "Bearer " + t.AccessToken
+	bearer := "Bearer " + GITHUB_TOKEN
 	//gitHubApiVersion := "2022-11-28" // github only
 	bitbucketUserName := os.Getenv("BITBUCKET_USER") // bitbucket only
 

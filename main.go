@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -27,13 +26,11 @@ func main() {
 	// Bitbucket route
 	http.HandleFunc("/oauth/redirect/bitbucket", func(w http.ResponseWriter, r *http.Request) {
 		getToken(httpClient, w, r, bitBucketClientID, bitBucketClientSecret, "bitbucket")
-		fmt.Fprintf(os.Stdout, "Access token: %s\n", t.AccessToken)
 	})
 
 	// GitHub route
 	http.HandleFunc("/oauth/redirect/github", func(w http.ResponseWriter, r *http.Request) {
 		getToken(httpClient, w, r, gitHubClientID, gitHubClientSecret, "github")
-		fmt.Fprintf(os.Stdout, "Access token: %s\n", t.AccessToken)
 	})
 
 	// Listen for connections

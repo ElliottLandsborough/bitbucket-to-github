@@ -9,7 +9,8 @@ import (
 	"os"
 )
 
-var t OAuthAccessResponse
+var GITHUB_TOKEN string
+var BITBUCKET_TOKEN string
 
 type OAuthAccessResponse struct {
 	AccessToken string `json:"access_token"`
@@ -52,9 +53,6 @@ func getToken(httpClient http.Client, w http.ResponseWriter, r *http.Request, cl
 	}
 	code := r.FormValue("code")
 
-	// Next, lets for the HTTP request to call the github oauth enpoint
-	// to get our access token
-
 	// github only
 	reqURL := fmt.Sprintf("https://github.com/login/oauth/access_token?client_id=%s&client_secret=%s&code=%s", clientID, clientSecret, code)
 	body := bytes.NewBufferString("")
@@ -76,14 +74,14 @@ func getToken(httpClient http.Client, w http.ResponseWriter, r *http.Request, cl
 		os.Exit(1)
 	}
 
-	// bitbucket only
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
 	// as JSON
 	req.Header.Set("accept", "application/json")
 
-	// Bitbucket only
-	req.SetBasicAuth(clientID, clientSecret)
+	// Some bitbucket specific headers and auth
+	if provider == "bitbucket" {
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		req.SetBasicAuth(clientID, clientSecret)
+	}
 
 	// Send out the HTTP request
 	res, err := httpClient.Do(req)
@@ -95,6 +93,9 @@ func getToken(httpClient http.Client, w http.ResponseWriter, r *http.Request, cl
 	}
 	defer res.Body.Close()
 
+	// Empty struct to parse the json into
+	var t OAuthAccessResponse
+
 	// Parse the request body into the `OAuthAccessResponse` struct
 	if err := json.NewDecoder(res.Body).Decode(&t); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -103,15 +104,36 @@ func getToken(httpClient http.Client, w http.ResponseWriter, r *http.Request, cl
 		os.Exit(1)
 	}
 
+	switch provider {
+	case "github":
+		GITHUB_TOKEN = t.AccessToken
+	case "bitbucket":
+		BITBUCKET_TOKEN = t.AccessToken
+	}
+
+	fmt.Fprintf(os.Stdout, "Access token: %s\n", t.AccessToken)
+
 	fmt.Fprintf(w, "Success. You can close this tab.\n")
 }
 
-// Waits for oauth access response before continuing
+func getGlobToken(provider string) string {
+	var t string
+
+	switch provider {
+	case "github":
+		t = GITHUB_TOKEN
+	case "bitbucket":
+		t = BITBUCKET_TOKEN
+	}
+
+	return t
+}
+
+// Waits for oauth access response before continuing (todo? Replace with channel)
 func waitForOAuthAccessResponse(provider string) {
-	// todo? Replace with channel.
-	// In this case a `for`` is fine because only one goroutine can change `t`
+
 	for {
-		if len(t.AccessToken) > 0 {
+		if len(getGlobToken(provider)) > 0 {
 			break
 		}
 	}

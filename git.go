@@ -13,7 +13,7 @@ type Clonable struct {
 }
 
 func cloneRepositories(s []Clonable, basePath string) {
-	waitForOAuthAccessResponse("github")
+	waitForOAuthAccessResponse("bitbucket")
 
 	for _, repo := range s {
 		fmt.Fprintf(os.Stdout, "Cloning: %s\n", repo.Name)

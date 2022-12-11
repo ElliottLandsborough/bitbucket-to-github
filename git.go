@@ -57,7 +57,6 @@ func GetPushableAndDuplicateRepos(bitBucketClonables map[string]Clonable, github
 func pushLocalReposToGithub(s map[string]Clonable, basePath string) {
 	for _, r := range s {
 		pushLocalRepoToGithub(r, basePath)
-		break // todo: remove
 	}
 }
 
@@ -76,13 +75,15 @@ func pushLocalRepoToGithub(c Clonable, basePath string) {
 		os.Exit(1)
 	}
 
-	panic("2")
+	remoteURL := "git@github.com:" + os.Getenv("GITHUB_USER") + "/" + c.Name
 
 	// push using default options
-	err = r.Push(&git.PushOptions{})
+	err = r.Push(&git.PushOptions{
+		RemoteURL: remoteURL,
+	})
 
 	if err != nil {
-		fmt.Fprintf(os.Stdout, "Could not open repository at `%v`. %v\n", path, err)
+		fmt.Fprintf(os.Stdout, "Could not push repository at `%v` to `%v`. %v\n", path, remoteURL, err)
 		os.Exit(1)
 	}
 }

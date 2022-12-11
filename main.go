@@ -62,7 +62,7 @@ func main() {
 	}
 
 	// Only clone the ones we want to push
-	cloneRepositories(pushables, basePath, "bitbucket")
+	//cloneRepositories(pushables, basePath, "bitbucket")
 
 	createPrivateGithubRepos(pushables)
 

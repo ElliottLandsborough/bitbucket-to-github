@@ -52,7 +52,7 @@ func (b *BitBucketResponse) toClonables() map[string]Clonable {
 
 	for _, r := range repos {
 		var c Clonable
-		c.Name = r.Name
+		c.Name = r.Slug
 		c.SshUrl = r.cloneUrl()
 		s[r.Name] = c
 	}
@@ -177,7 +177,6 @@ func gitHubRepoHasContributors(repo Clonable) bool {
 func createPrivateGithubRepos(s map[string]Clonable) {
 	for _, r := range s {
 		createPrivateGithubRepo(r)
-		break // todo: remove
 	}
 }
 

@@ -105,3 +105,14 @@ func getToken(httpClient http.Client, w http.ResponseWriter, r *http.Request, cl
 
 	fmt.Fprintf(w, "Success. You can close this tab.\n")
 }
+
+// Waits for oauth access response before continuing
+func waitForOAuthAccessResponse(provider string) {
+	// todo? Replace with channel.
+	// In this case a `for`` is fine because only one goroutine can change `t`
+	for {
+		if len(t.AccessToken) > 0 {
+			break
+		}
+	}
+}

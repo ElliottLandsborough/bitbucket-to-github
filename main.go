@@ -45,8 +45,9 @@ func main() {
 	// Open a browser if possible or echo the url to command line
 	go OpenBrowser(bb.generateOauthUrl(bitBucketClientID))
 
-	// Waits for oauth access response and then does some things
-	waitForOAuthAccessResponseThenClone(httpClient)
+	c := getRepositories(httpClient, "bitbucket")
+
+	cloneRepositories(c, "/tmp/foo/")
 
 	// Create new gh oauth
 	var gh GitHubOauth
@@ -55,25 +56,4 @@ func main() {
 	go OpenBrowser(gh.generateOauthUrl(gitHubClientID))
 
 	handlePosix()
-}
-
-func waitForOAuthAccessResponseThenClone(httpClient http.Client) {
-	// todo? Replace with channel.
-	// In this case a `for`` is fine because only one goroutine can change `t`
-	for {
-		if len(t.AccessToken) > 0 {
-			break
-		}
-	}
-
-	s := getRepositories(httpClient)
-
-	fmt.Fprintf(os.Stdout, "Repository count: %v\n", len(s.Repos))
-	fmt.Fprintf(os.Stdout, "SIZE: %v\n", s.Size)
-	fmt.Fprintf(os.Stdout, "PAGELEN: %v\n", s.Pagelen)
-	fmt.Fprintf(os.Stdout, "PAGE: %v\n", s.Page)
-
-	c := s.toClonables()
-
-	cloneRepositories(c, "/tmp/foo/")
 }

@@ -13,6 +13,8 @@ type Clonable struct {
 }
 
 func cloneRepositories(s []Clonable, basePath string) {
+	waitForOAuthAccessResponse("github")
+
 	for _, repo := range s {
 		fmt.Fprintf(os.Stdout, "Cloning: %s\n", repo.Name)
 		fmt.Fprintf(os.Stdout, "git clone https://github.com/go-git/go-git: %s\n", repo.SshUrl)

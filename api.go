@@ -7,6 +7,10 @@ import (
 	"os"
 )
 
+type GitHubResponse struct {
+	Repos []GitHubRepo
+}
+
 type GitHubRepo struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
@@ -14,8 +18,19 @@ type GitHubRepo struct {
 	SshUrl      string `json:"ssh_url"`
 }
 
-func (r *GitHubRepo) cloneUrl() string {
-	return r.SshUrl
+func (b *GitHubResponse) toClonables() []Clonable {
+	var s []Clonable
+
+	repos := b.Repos
+
+	for _, r := range repos {
+		var c Clonable
+		c.Name = r.Name
+		c.SshUrl = r.SshUrl
+		s = append(s, c)
+	}
+
+	return s
 }
 
 type BitBucketResponse struct {
@@ -52,7 +67,7 @@ func (r *BitBucketRepo) cloneUrl() string {
 	return "git@bitbucket.org:" + r.Slug
 }
 
-func getRepositories(httpClient http.Client) BitBucketResponse {
+func getRepositories(httpClient http.Client, provider string) []Clonable {
 	bearer := "Bearer " + t.AccessToken
 	//gitHubApiVersion := "2022-11-28" // github only
 	bitbucketUserName := os.Getenv("BITBUCKET_USER") // bitbucket only
@@ -80,13 +95,25 @@ func getRepositories(httpClient http.Client) BitBucketResponse {
 	}
 	defer res.Body.Close()
 
+	var c []Clonable
+
 	// Parse the request body into the `OAuthAccessResponse` struct
 	//var s []GitHubRepo
-	var s BitBucketResponse
-	if err := json.NewDecoder(res.Body).Decode(&s); err != nil {
-		fmt.Fprintf(os.Stdout, "could not parse JSON response: %v\n", err)
-		os.Exit(1)
+
+	if provider == "bitbucket" {
+		var s BitBucketResponse
+		if err := json.NewDecoder(res.Body).Decode(&s); err != nil {
+			fmt.Fprintf(os.Stdout, "could not parse JSON response: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Fprintf(os.Stdout, "Repository count: %v\n", len(s.Repos))
+		fmt.Fprintf(os.Stdout, "SIZE: %v\n", s.Size)
+		fmt.Fprintf(os.Stdout, "PAGELEN: %v\n", s.Pagelen)
+		fmt.Fprintf(os.Stdout, "PAGE: %v\n", s.Page)
+
+		c = s.toClonables()
 	}
 
-	return s
+	return c
 }

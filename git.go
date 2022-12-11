@@ -44,8 +44,25 @@ func cloneRepositories(s map[string]Clonable, basePath string, provider string) 
 	}
 }
 
-func getReposNotOnGithub(bitBucketClonables map[string]Clonable, githubClonables map[string]Clonable) (map[string]Clonable, map[string]Clonable) {
-	var pushables, duplicates map[string]Clonable
+func GetPushableAndDuplicateRepos(bitBucketClonables map[string]Clonable, githubClonables map[string]Clonable) (map[string]Clonable, map[string]Clonable) {
+	pushables := make(map[string]Clonable)
+	duplicates := make(map[string]Clonable)
+
+	for key, c := range bitBucketClonables {
+		// If same repo name is on github
+		if _, ok := githubClonables[key]; ok {
+			// And it has contributors
+			if gitHubRepoHasContributors(c) {
+				// We don't want to push it
+				duplicates[key] = c
+
+				continue
+			}
+		}
+
+		// Otherwise, we do want to push it
+		pushables[key] = c
+	}
 
 	return pushables, duplicates
 }

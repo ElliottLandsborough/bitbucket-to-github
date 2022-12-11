@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"os"
 )
@@ -67,7 +69,7 @@ func (r *BitBucketRepo) cloneUrl() string {
 	return "git@bitbucket.org:" + r.Slug
 }
 
-func getRepositories(httpClient http.Client, provider string) map[string]Clonable {
+func getRepositories(provider string) map[string]Clonable {
 	waitForOAuthAccessResponse(provider)
 
 	reqURL := fmt.Sprintf("https://api.bitbucket.org/2.0/repositories/%v?pagelen=100", os.Getenv("BITBUCKET_USER"))
@@ -88,6 +90,8 @@ func getRepositories(httpClient http.Client, provider string) map[string]Clonabl
 	if provider == "github" {
 		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 	}
+
+	httpClient := http.Client{}
 
 	// Send out the HTTP request
 	res, err := httpClient.Do(req)
@@ -127,4 +131,42 @@ func getRepositories(httpClient http.Client, provider string) map[string]Clonabl
 	}
 
 	return c
+}
+
+func gitHubRepoHasContributors(repo Clonable) bool {
+	waitForOAuthAccessResponse("github")
+
+	reqURL := fmt.Sprintf("https://api.github.com/repos/%v/%v/stats/contributors", os.Getenv("GITHUB_USER"), repo.Name)
+
+	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
+
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "could not create HTTP request: %v\n", err)
+		os.Exit(1)
+	}
+	req.Header.Set("accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+getBearerToken("github"))
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+
+	httpClient := http.Client{}
+
+	// Send out the HTTP request
+	res, err := httpClient.Do(req)
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "could not send HTTP request: %v\n", err)
+		os.Exit(1)
+	}
+	defer res.Body.Close()
+
+	b, err := io.ReadAll(res.Body)
+	// b, err := ioutil.ReadAll(resp.Body)  Go.1.15 and earlier
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	if len(string(b)) == 0 {
+		return false
+	}
+
+	return true
 }

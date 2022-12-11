@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -42,7 +43,7 @@ func main() {
 	// Open a browser if possible or echo the url to command line
 	go OpenBrowser(bb.generateOauthUrl(bitBucketClientID))
 
-	bitBucketClonables := getRepositories(httpClient, "bitbucket")
+	bitBucketClonables := getRepositories("bitbucket")
 
 	cloneRepositories(bitBucketClonables, "/tmp/foo/", "bitbucket")
 
@@ -52,9 +53,17 @@ func main() {
 	// Open a browser if possible or echo the url to command line
 	go OpenBrowser(gh.generateOauthUrl(gitHubClientID))
 
-	githubClonables := getRepositories(httpClient, "github")
+	githubClonables := getRepositories("github")
 
-	getReposNotOnGithub(bitBucketClonables, githubClonables)
+	_, duplicates := GetPushableAndDuplicateRepos(bitBucketClonables, githubClonables)
+
+	for key := range duplicates {
+		fmt.Fprintf(os.Stdout, "Duplicate will not be pushed: %v\n", key)
+	}
+
+	// pushables = list of github repos that we could potentially push
+
+	//createGithubRepositories(pushables)
 
 	handlePosix()
 }

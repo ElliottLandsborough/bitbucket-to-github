@@ -18,8 +18,8 @@ type GitHubRepo struct {
 	SshUrl      string `json:"ssh_url"`
 }
 
-func (b *GitHubResponse) toClonables() []Clonable {
-	var s []Clonable
+func (b *GitHubResponse) toClonables() map[string]Clonable {
+	s := make(map[string]Clonable)
 
 	repos := b.Repos
 
@@ -27,7 +27,7 @@ func (b *GitHubResponse) toClonables() []Clonable {
 		var c Clonable
 		c.Name = r.Name
 		c.SshUrl = r.SshUrl
-		s = append(s, c)
+		s[r.Name] = c
 	}
 
 	return s
@@ -41,8 +41,8 @@ type BitBucketResponse struct {
 	Next    string          `json:"next"`
 }
 
-func (b *BitBucketResponse) toClonables() []Clonable {
-	var s []Clonable
+func (b *BitBucketResponse) toClonables() map[string]Clonable {
+	s := make(map[string]Clonable)
 
 	repos := b.Repos
 
@@ -50,7 +50,7 @@ func (b *BitBucketResponse) toClonables() []Clonable {
 		var c Clonable
 		c.Name = r.Name
 		c.SshUrl = r.cloneUrl()
-		s = append(s, c)
+		s[r.Name] = c
 	}
 
 	return s
@@ -67,25 +67,27 @@ func (r *BitBucketRepo) cloneUrl() string {
 	return "git@bitbucket.org:" + r.Slug
 }
 
-func getRepositories(httpClient http.Client, provider string) []Clonable {
-	bearer := "Bearer " + GITHUB_TOKEN
-	//gitHubApiVersion := "2022-11-28" // github only
-	bitbucketUserName := os.Getenv("BITBUCKET_USER") // bitbucket only
+func getRepositories(httpClient http.Client, provider string) map[string]Clonable {
+	waitForOAuthAccessResponse(provider)
 
-	// Next, lets for the HTTP request to call the github oauth enpoint
-	// to get our access token
-	//reqURL := fmt.Sprintf("https://api.github.com/user/repos?per_page=100")
-	reqURL := fmt.Sprintf("https://api.bitbucket.org/2.0/repositories/%v?pagelen=100", bitbucketUserName)
+	reqURL := fmt.Sprintf("https://api.bitbucket.org/2.0/repositories/%v?pagelen=100", os.Getenv("BITBUCKET_USER"))
+
+	if provider == "github" {
+		reqURL = "https://api.github.com/user/repos?per_page=100"
+	}
+
 	req, err := http.NewRequest(http.MethodGet, reqURL, nil)
 
 	if err != nil {
 		fmt.Fprintf(os.Stdout, "could not create HTTP request: %v\n", err)
 		os.Exit(1)
 	}
-	// We set this header since we want the response
 	req.Header.Set("accept", "application/json")
-	req.Header.Set("Authorization", bearer) // github
-	//req.Header.Set("X-GitHub-Api-Version", gitHubApiVersion) // github
+	req.Header.Set("Authorization", "Bearer:"+getBearerToken(provider))
+
+	if provider == "github" {
+		req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	}
 
 	// Send out the HTTP request
 	res, err := httpClient.Do(req)
@@ -95,10 +97,19 @@ func getRepositories(httpClient http.Client, provider string) []Clonable {
 	}
 	defer res.Body.Close()
 
-	var c []Clonable
+	var c map[string]Clonable
 
-	// Parse the request body into the `OAuthAccessResponse` struct
-	//var s []GitHubRepo
+	if provider == "github" {
+		var s GitHubResponse
+		if err := json.NewDecoder(res.Body).Decode(&s); err != nil {
+			fmt.Fprintf(os.Stdout, "could not parse JSON response: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Fprintf(os.Stdout, "Github repository count: %v\n", len(s.Repos))
+
+		c = s.toClonables()
+	}
 
 	if provider == "bitbucket" {
 		var s BitBucketResponse
@@ -107,7 +118,7 @@ func getRepositories(httpClient http.Client, provider string) []Clonable {
 			os.Exit(1)
 		}
 
-		fmt.Fprintf(os.Stdout, "Repository count: %v\n", len(s.Repos))
+		fmt.Fprintf(os.Stdout, "Bitbucket repository count: %v\n", len(s.Repos))
 		fmt.Fprintf(os.Stdout, "SIZE: %v\n", s.Size)
 		fmt.Fprintf(os.Stdout, "PAGELEN: %v\n", s.Pagelen)
 		fmt.Fprintf(os.Stdout, "PAGE: %v\n", s.Page)

@@ -1,5 +1,15 @@
 # bitbucket-to-github
 
+## What?
+
+1. Clones your bitbucket repos to `/tmp/foo`
+2. Creates any that don't already exist on github as private repos
+3. Pushes them all to github
+
+## Why?
+
+## How?
+
 Go here: `https://bitbucket.org/[username]/workspace/settings/api`
 
 Add a new consumer:

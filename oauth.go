@@ -55,7 +55,7 @@ func getToken(httpClient http.Client, w http.ResponseWriter, r *http.Request, cl
 
 	// github only
 	reqURL := fmt.Sprintf("https://github.com/login/oauth/access_token?client_id=%s&client_secret=%s&code=%s", clientID, clientSecret, code)
-	body := bytes.NewBufferString("")
+	req, err := http.NewRequest(http.MethodPost, reqURL, nil)
 
 	// bitbucket only
 	if provider == "bitbucket" {
@@ -63,10 +63,10 @@ func getToken(httpClient http.Client, w http.ResponseWriter, r *http.Request, cl
 		data.Set("grant_type", "client_credentials")
 		data.Set("code", code)
 		reqURL = "https://bitbucket.org/site/oauth2/access_token"
-		body = bytes.NewBufferString(data.Encode())
+		body := bytes.NewBufferString(data.Encode())
+		req, err = http.NewRequest(http.MethodPost, reqURL, body)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, reqURL, body) //
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintf(w, "could not create HTTP request: %v\n", err)
@@ -116,7 +116,7 @@ func getToken(httpClient http.Client, w http.ResponseWriter, r *http.Request, cl
 	fmt.Fprintf(w, "Success. You can close this tab.\n")
 }
 
-func getGlobToken(provider string) string {
+func getBearerToken(provider string) string {
 	var t string
 
 	switch provider {
@@ -131,9 +131,8 @@ func getGlobToken(provider string) string {
 
 // Waits for oauth access response before continuing (todo? Replace with channel)
 func waitForOAuthAccessResponse(provider string) {
-
 	for {
-		if len(getGlobToken(provider)) > 0 {
+		if len(getBearerToken(provider)) > 0 {
 			break
 		}
 	}

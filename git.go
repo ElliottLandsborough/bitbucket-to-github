@@ -12,8 +12,8 @@ type Clonable struct {
 	SshUrl string
 }
 
-func cloneRepositories(s []Clonable, basePath string) {
-	waitForOAuthAccessResponse("bitbucket")
+func cloneRepositories(s map[string]Clonable, basePath string, provider string) {
+	waitForOAuthAccessResponse(provider)
 
 	for _, repo := range s {
 		fmt.Fprintf(os.Stdout, "Cloning: %s\n", repo.Name)
@@ -42,4 +42,10 @@ func cloneRepositories(s []Clonable, basePath string) {
 		  #  bb delete -u $BB_USERNAME -p $BB_PASSWORD --owner $BB_ORG $repo
 		*/
 	}
+}
+
+func getReposNotOnGithub(bitBucketClonables map[string]Clonable, githubClonables map[string]Clonable) (map[string]Clonable, map[string]Clonable) {
+	var pushables, duplicates map[string]Clonable
+
+	return pushables, duplicates
 }

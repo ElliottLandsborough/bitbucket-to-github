@@ -42,15 +42,19 @@ func main() {
 	// Open a browser if possible or echo the url to command line
 	go OpenBrowser(bb.generateOauthUrl(bitBucketClientID))
 
-	c := getRepositories(httpClient, "bitbucket")
+	bitBucketClonables := getRepositories(httpClient, "bitbucket")
 
-	cloneRepositories(c, "/tmp/foo/")
+	cloneRepositories(bitBucketClonables, "/tmp/foo/", "bitbucket")
 
 	// Create new gh oauth
 	var gh GitHubOauth
 
 	// Open a browser if possible or echo the url to command line
 	go OpenBrowser(gh.generateOauthUrl(gitHubClientID))
+
+	githubClonables := getRepositories(httpClient, "github")
+
+	getReposNotOnGithub(bitBucketClonables, githubClonables)
 
 	handlePosix()
 }

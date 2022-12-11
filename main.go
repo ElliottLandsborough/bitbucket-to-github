@@ -21,6 +21,7 @@ func main() {
 	bitBucketClientSecret := os.Getenv("BITBUCKET_SECRET")
 	gitHubClientID := os.Getenv("GITHUB_CLIENT_ID")
 	gitHubClientSecret := os.Getenv("GITHUB_SECRET")
+	basePath := os.Getenv("BASEPATH")
 
 	httpClient := http.Client{}
 
@@ -55,15 +56,16 @@ func main() {
 
 	githubClonables := getRepositories("github")
 
-	_, duplicates := GetPushableAndDuplicateRepos(bitBucketClonables, githubClonables)
+	// pushables = list of github repos that we want to push
+	pushables, duplicates := GetPushableAndDuplicateRepos(bitBucketClonables, githubClonables)
 
 	for key := range duplicates {
 		fmt.Fprintf(os.Stdout, "Duplicate will not be pushed: %v\n", key)
 	}
 
-	// pushables = list of github repos that we could potentially push
+	createPrivateGithubRepos(pushables)
 
-	//createGithubRepositories(pushables)
+	pushLocalReposToGithub(pushables, basePath)
 
 	handlePosix()
 }

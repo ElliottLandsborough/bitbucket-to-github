@@ -66,3 +66,14 @@ func GetPushableAndDuplicateRepos(bitBucketClonables map[string]Clonable, github
 
 	return pushables, duplicates
 }
+
+func pushLocalReposToGithub(s map[string]Clonable, basePath string) {
+	/*
+		r, err := git.PlainOpen(path)
+		CheckIfError(err)
+
+		Info("git push")
+		// push using default options
+		err = r.Push(&git.PushOptions{})
+	*/
+}

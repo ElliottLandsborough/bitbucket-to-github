@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -169,4 +171,57 @@ func gitHubRepoHasContributors(repo Clonable) bool {
 	}
 
 	return true
+}
+
+func createPrivateGithubRepos(s map[string]Clonable) {
+	for _, r := range s {
+		createPrivateGithubRepo(r)
+		break // todo: remove
+	}
+}
+
+func createPrivateGithubRepo(c Clonable) {
+
+	/*
+	  '{"name":"Hello-World","description":"This is your first repo!","homepage":"https://github.com","private":false,"is_template":true}'
+	*/
+	waitForOAuthAccessResponse("github")
+
+	reqURL := "https://api.github.com/user/repos"
+
+	values := map[string]string{"name": c.Name, "private": "true"}
+
+	jsonValue, _ := json.Marshal(values)
+
+	req, err := http.NewRequest(http.MethodPost, reqURL, bytes.NewBuffer(jsonValue))
+
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "could not create HTTP request: %v\n", err)
+		os.Exit(1)
+	}
+
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+getBearerToken("github"))
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+
+	httpClient := http.Client{}
+
+	// Send out the HTTP request
+	res, err := httpClient.Do(req)
+	if err != nil {
+		fmt.Fprintf(os.Stdout, "could not send HTTP request: %v\n", err)
+		os.Exit(1)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != 201 {
+		fmt.Fprintf(os.Stdout, "ERROR\n")
+		fmt.Fprintf(os.Stdout, "response Status: %v\n", res.Status)
+		fmt.Fprintf(os.Stdout, "response Headers: %v\n", res.Header)
+		body, _ := ioutil.ReadAll(res.Body)
+		fmt.Fprintf(os.Stdout, "response Body: %v\n", string(body))
+	}
+
+	fmt.Fprintf(os.Stdout, "Private github repo created: %v\n", c.Name)
 }

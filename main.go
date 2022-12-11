@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"syscall"
 
+	"github.com/go-git/go-git/v5"
 	"github.com/joho/godotenv"
 )
 
@@ -63,9 +64,7 @@ func waitForOAuthAccessResponse(httpClient http.Client) {
 	fmt.Fprintf(os.Stdout, "PAGELEN: %v\n", s.Pagelen)
 	fmt.Fprintf(os.Stdout, "PAGE: %v\n", s.Page)
 
-	for _, repo := range s.Repos {
-		fmt.Fprintf(os.Stdout, "Name: %s\n", repo.Name)
-	}
+	cloneRepositories(s)
 }
 
 type OAuthAccessResponse struct {
@@ -77,6 +76,10 @@ type GitHubRepo struct {
 	Description string `json:"description"`
 	Visibility  string `json:"visibility"`
 	SshUrl      string `json:"ssh_url"`
+}
+
+func (r *GitHubRepo) cloneUrl() string {
+	return r.SshUrl
 }
 
 type BitBucketResponse struct {
@@ -92,6 +95,10 @@ type BitBucketRepo struct {
 	Name        string `json:"name"`
 	FullName    string `json:"full_name"`
 	Description string `json:"description"`
+}
+
+func (r *BitBucketRepo) cloneUrl() string {
+	return "git@bitbucket.org:" + r.Slug
 }
 
 var browserCommands = map[string]string{
@@ -222,6 +229,34 @@ func getRepositories(httpClient http.Client) BitBucketResponse {
 	}
 
 	return s
+}
+
+func cloneRepositories(s BitBucketResponse) {
+	for _, repo := range s.Repos {
+		fmt.Fprintf(os.Stdout, "Cloning: %s\n", repo.Name)
+		fmt.Fprintf(os.Stdout, "git clone https://github.com/go-git/go-git: %s\n", repo.cloneUrl())
+
+		cloneDir := "/tmp/foo/" + repo.Name
+
+		if _, err := git.PlainClone(cloneDir, false, &git.CloneOptions{
+			URL:      "https://github.com/go-git/go-git",
+			Progress: os.Stdout,
+		}); err != nil {
+			fmt.Fprintf(os.Stdout, "could not parse JSON response: %v\n", err)
+			os.Exit(1)
+		}
+
+		/*
+		  echo "* $repo cloned, now creating on github..."
+		  echo
+		  #curl -u $GH_USERNAME:$GH_PASSWORD https://api.github.com/orgs/$GH_ORG/repos -d "{\"name\": \"$repo\", \"private\": true}"
+		  echo
+		  echo "* mirroring $repo to github..."
+		  echo
+		  #git push --mirror git@github.com:$GH_ORG/$repo.git && \
+		  #  bb delete -u $BB_USERNAME -p $BB_PASSWORD --owner $BB_ORG $repo
+		*/
+	}
 }
 
 // https://gobyexample.com/signals
